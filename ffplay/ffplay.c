@@ -303,15 +303,6 @@ typedef struct VideoState {
     int width, height, xleft, ytop;
     int step;
 
-#if CONFIG_AVFILTER
-    int vfilter_idx;
-    AVFilterContext *in_video_filter;   // the first filter in the video chain
-    AVFilterContext *out_video_filter;  // the last filter in the video chain
-    AVFilterContext *in_audio_filter;   // the first filter in the audio chain
-    AVFilterContext *out_audio_filter;  // the last filter in the audio chain
-    AVFilterGraph *agraph;              // audio filter graph
-#endif
-
     int last_video_stream, last_audio_stream, last_subtitle_stream;
 
     SDL_cond *continue_read_thread;
@@ -319,8 +310,8 @@ typedef struct VideoState {
 
 /* options specified by the user */
 static AVInputFormat *file_iformat;
-//static const char *input_filename = "rtmp://live.hkstv.hk.lxdns.com/live/hks";
-static const char *input_filename = "rtmp://119.23.221.32:1935/live/wujielin";
+static const char *input_filename = "rtmp://live.hkstv.hk.lxdns.com/live/hks";
+//static const char *input_filename = "rtmp://119.23.221.32:1935/live/wujielin";
 static const char *window_title;
 static int default_width  = 1280;
 static int default_height = 720;
@@ -335,7 +326,9 @@ static int display_disable;
 static int borderless;
 static int startup_volume = 100;
 static int show_status = 1;
-static int av_sync_type = AV_SYNC_AUDIO_MASTER;
+//static int av_sync_type = AV_SYNC_AUDIO_MASTER;
+static int av_sync_type = AV_SYNC_EXTERNAL_CLOCK;
+//static int av_sync_type = AV_SYNC_VIDEO_MASTER;
 static int64_t start_time = AV_NOPTS_VALUE;
 static int64_t duration = AV_NOPTS_VALUE;
 static int fast = 0;
@@ -2470,12 +2463,6 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
     }
     is->audio_write_buf_size = is->audio_buf_size - is->audio_buf_index;
     /* Let's assume the audio driver that is used by SDL has two periods. */
-    /*set_clock_at第二个参数是计算音频已经播放的时间，
-    相当于video中的上一帧的播放时间，如果不同过SDL，
-    例如直接使用linux下的dsp设备进行播放，
-    那么我们可以通过ioctl接口获取到驱动的audiobuffer中还有多少数据没播放，
-    这样，我们通过音频的采样率和位深，可以很精确的算出音频播放到哪个点了，
-    但是此处的计算方法有点让人看不懂*/
     if (!isnan(is->audio_clock)) {
         set_clock_at(&is->audclk, is->audio_clock - 
             (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) /
